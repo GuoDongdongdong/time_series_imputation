@@ -66,7 +66,7 @@ class CustomDataset(Dataset):
             data = data.cpu()
         return self.scaler.inverse_transform(data)
 
-    def result_to_csv(self, imputation=None):
+    def result_to_csv(self, imputation):
         df = pd.DataFrame()
         df['date'] = self.test_date
         observed_data = self.observed_data.copy()
@@ -75,9 +75,9 @@ class CustomDataset(Dataset):
         df[self.args.target] = observed_data
 
         # [L, D] L maybe less than original length.
-        imputation = np.ndarray(imputation)
+        imputation = imputation.numpy()
         temp = np.full(len(self.test_date), np.nan)
-        temp[:len(imputation)] = imputation
+        temp[:len(imputation), ] = imputation
         df['imputation'] = temp
         path = os.path.dirname(self.args.checkpoints_path)
         df.to_csv(os.path.join(path, 'result.csv'), index=False, float_format='%.2f')

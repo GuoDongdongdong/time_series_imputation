@@ -106,8 +106,6 @@ class Experiment:
 
     def impute(self):
         dataset, dataloader = self._get_data('test')
-        dataset.result_to_csv()
-        return
         with torch.no_grad():
             self.model.eval()
             mse_total = 0
@@ -140,6 +138,7 @@ class Experiment:
                 all_observed_time.append(observed_time)
                 all_generated_samples.append(samples)
                 all_generated_samples_median.append(samples_median)
+
                 mse_current = ((samples_median - c_target) * eval_points) ** 2
                 mae_current = torch.abs((samples_median - c_target) * eval_points) 
 
@@ -149,4 +148,6 @@ class Experiment:
 
             logger.info(f"RMSE: {np.sqrt(mse_total / evalpoints_total)}")
             logger.info(f"MAE: {mae_total / evalpoints_total}")
-            all_generated_samples_median
+            all_generated_samples_median = torch.cat(all_generated_samples_median, dim=0).cpu()
+            all_generated_samples_median = all_generated_samples_median.view(-1)
+            dataset.result_to_csv(all_generated_samples_median)

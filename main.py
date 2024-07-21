@@ -35,9 +35,9 @@ def parse_args():
 
     parser.add_argument('-batch_size', type=int, default=32, help='')
     parser.add_argument('-lr', type=float, default=1e-3, help='')
-    parser.add_argument('-epochs', type=int, default=100, help='')
-    parser.add_argument('-patience', type=int, default=5, help='')
-    parser.add_argument('-num_workers', type=int, default=8, help='')
+    parser.add_argument('-epochs', type=int, default=200, help='')
+    parser.add_argument('-patience', type=int, default=10, help='')
+    parser.add_argument('-num_workers', type=int, default=0, help='')
 
     # SAITS
     parser.add_argument('-diagonal_attention_mask', type=bool, default=True, help='')
@@ -107,34 +107,9 @@ def main() :
     if args.train:
         exp.train()
     else:
-        args.checkpoints_path = 'checkpoints/CSDI/20240719_T175742/checkpoint.pth'
+        args.checkpoints_path = 'checkpoints/CSDI/20240720_T184623/checkpoint.pth'
         exp.load_model(args.checkpoints_path)
         exp.impute()
-
-    # imputation = exp.impute(data['test_info'])['imputation']
-    # imputation = imputation.reshape(-1, args.features)
-    # X_ori      = data['test_info']['X_ori'].reshape(-1, args.features)
-    # X          = data['test_info']['X'].reshape(-1, args.features)
-    # imputation = dataset.inverse(imputation)
-    # X_ori      = dataset.inverse(X_ori)
-    # X          = dataset.inverse(X)
-
-    # mask_ori        = np.isnan(X_ori)
-    # mask_loss = mask_ori ^ np.isnan(X)
-
-    # # calculate MAE RMSE
-    # mae  = calc_mae(imputation, np.nan_to_num(X_ori), mask_loss)
-    # rmse = calc_rmse(imputation, np.nan_to_num(X_ori), mask_loss)
-    # logger.info(f'MAE : {mae}, RMSE : {rmse}')
-
-    # # save imputation to csv
-    # date = pd.to_datetime(data['test_info']['date'])
-    # result = pd.DataFrame()
-    # result['date'] = date
-    # result['ori'] = X_ori
-    # result['imputation'] = imputation
-    # path = os.path.join(args.saving_path, 'imputation.csv')
-    # result.to_csv(path, index=False, float_format='%.2f')
 
 
 if __name__ == '__main__' :

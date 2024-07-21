@@ -2,6 +2,7 @@ import os
 import argparse
 import configparser
 
+import torch
 import numpy as np
 import pandas as pd
 
@@ -40,10 +41,4 @@ class MyDataset(Dataset):
 
 
 if __name__ == '__main__':
-   path = 'checkpoints/CSDI/20240719_T175742/result.csv'
-   df = pd.read_csv(path)
-   x = np.arange(2000)
-   y = np.zeros(3329)
-   y[:len(x)] = x
-   df['x'] = y
-   df.to_csv('tmep.csv')
+    pass
