@@ -118,6 +118,22 @@ class Model(nn.Module):
             loss_sum += loss.detach()
         return loss_sum / self.num_steps
 
+    def cal_loss_validation(self, batch):
+        (
+            observed_data,
+            observed_mask,
+            observed_tp,
+            gt_mask,
+            for_pattern_mask,
+            _,
+        ) = self.process_data(batch)
+        imputation = self.impute(batch, n_samples=1)
+        imputation = np.squeeze(imputation, axis=1)
+        target_mask = observed_mask - gt_mask
+        temp = (observed_data - imputation) * target_mask
+        loss = (temp ** 2).sum() / target_mask.sum()
+        return loss
+
     def calc_loss(
         self, observed_data, cond_mask, observed_mask, side_info, is_train, set_t=-1
     ):
@@ -150,7 +166,7 @@ class Model(nn.Module):
 
         return total_input
 
-    def impute(self, batch):
+    def impute(self, batch, n_samples = None):
         (
             observed_data,
             observed_mask,
@@ -161,7 +177,8 @@ class Model(nn.Module):
         ) = self.process_data(batch)
         cond_mask = gt_mask
         side_info = self.get_side_info(observed_tp=observed_tp, cond_mask=cond_mask)
-        n_samples = self.args.n_samples
+        if n_samples == None:
+            n_samples = self.args.n_samples
 
         B, K, L = observed_data.shape
 
@@ -223,9 +240,10 @@ class Model(nn.Module):
 
         side_info = self.get_side_info(observed_tp, cond_mask)
 
-        loss_func = self.calc_loss if is_train == 1 else self.calc_loss_valid
-
-        return loss_func(observed_data, cond_mask, observed_mask, side_info, is_train)
+        if is_train == 1:
+            return self.calc_loss(observed_data, cond_mask, observed_mask, side_info, is_train)
+        else:
+            return self.calc_loss_valid(observed_data, cond_mask, observed_mask, side_info, is_train)
 
     def evaluate(self, batch, n_samples):
         (

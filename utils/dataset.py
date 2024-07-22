@@ -41,9 +41,10 @@ class CustomDataset(Dataset):
 
         self.observed_data = data[data_border_l[self.flag]:data_border_r[self.flag]]
         self.observed_mask = 1 - np.isnan(self.observed_data)
-        self.observed_data = np.nan_to_num(self.observed_data)
         # artifical mask
         self.ground_truth_mask = add_missing(self.observed_data, self.args.missing_rate)
+
+        self.observed_data = np.nan_to_num(self.observed_data)
 
         if flag == 'test':
             self.test_date  = raw_data['date'][train_len + vali_len:]

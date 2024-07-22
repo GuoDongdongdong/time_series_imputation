@@ -105,6 +105,8 @@ def main() :
     logger.info(f'model params:{exp.params()}')
 
     if args.train:
+        args.checkpoints_path = 'checkpoints/CSDI/20240720_T133303/checkpoint.pth'
+        exp.load_model(args.checkpoints_path)
         exp.train()
     else:
         args.checkpoints_path = 'checkpoints/CSDI/20240720_T184623/checkpoint.pth'
