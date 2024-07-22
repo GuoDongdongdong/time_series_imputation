@@ -64,26 +64,23 @@ class Experiment:
             scaler = torch.cuda.amp.grad_scaler.GradScaler()
 
         for epoch in range(self.args.epochs):
-            # train_loss = []
-            # self.model.train()
-            # for i, x in enumerate(dataloader):
-            #     optimizer.zero_grad()
-            #     loss = self.model(x)
+            train_loss = []
+            self.model.train()
+            for batch in dataloader:
+                optimizer.zero_grad()
+                loss = self.model(batch=batch, is_train=1)
 
-            #     if self.args.use_amp:
-            #         scaler.scale(loss).backward()
-            #         scaler.step(optimizer)
-            #         scaler.update()
-            #     else:
-            #         loss.backward()
-            #         optimizer.step()
+                if self.args.use_amp:
+                    scaler.scale(loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    loss.backward()
+                    optimizer.step()
 
-            #     train_loss.append(loss.item())
-            #     if (i + 1) % 100 == 0:
-            #         logger.info("iters: {0}, epoch: {1} loss: {2:.7f}"
-            #                      .format(i + 1, epoch + 1, loss.item()))
+                train_loss.append(loss.item())
 
-            # train_loss = np.average(train_loss)
+            train_loss = np.average(train_loss)
             validation_loss = self.validate()
             logger.info("Epoch: {0} Train Loss: {1:.7f} Vali Loss: {2:.7f}".format(epoch + 1, train_loss, validation_loss))
 
@@ -97,8 +94,8 @@ class Experiment:
         validation_loss = []
         self.model.eval()
         with torch.no_grad():
-            for x in dataloader:
-                loss = self.model(batch=x, is_train=0)
+            for batch in dataloader:
+                loss = self.model(batch=batch, is_train=0)
                 validation_loss.append(loss.item())
 
         validation_loss = np.average(validation_loss)
@@ -110,44 +107,58 @@ class Experiment:
             self.model.eval()
             mse_total = 0
             mae_total = 0
-            evalpoints_total = 0
+            target_mask_sum = 0
 
-            all_target = []
-            all_observed_point = []
-            all_observed_time = []
-            all_evalpoint = []
+            all_gt_mask = []
+            all_observed_data = []
+            all_observed_mask = []
             all_generated_samples = []
             all_generated_samples_median = []
             for batch in dataloader:
-                output = self.model.evaluate(batch, self.args.n_samples)
+                observed_data = batch['observed_data']
+                observed_mask = batch['observed_mask']
+                gt_mask       = batch['gt_mask']
+                target_mask = observed_mask - gt_mask
+                all_gt_mask.append(gt_mask)
+                all_observed_mask.append(observed_mask)
+                all_observed_data.append(observed_data)
+                # [B, n_samples, D, L]
+                output = self.model.impute(batch=batch, n_samples=self.args.n_samples)
+                B, n_samples, D, L = output.shape
+                # [B, n_samples, L, D]
+                output = output.permute(0, 1, 3, 2)
+                # [n_samples, B * L, D]
+                output = output.reshape(n_samples, B * L, D)
+                # denormlization
+                for i in range(n_samples):
+                    output[i, :, :] = dataset.inverse(output[i, :, :])
 
-                samples, c_target, eval_points, observed_points, observed_time = output
-                samples = samples.permute(0, 1, 3, 2)  # (B,nsample,L,K)
-                c_target = c_target.permute(0, 2, 1)  # (B,L,K)
-                eval_points = eval_points.permute(0, 2, 1)
-                observed_points = observed_points.permute(0, 2, 1)
-
-                samples_median = samples.median(dim=1).values
-                B, L, D = samples_median.shape
-                samples_median = dataset.inverse(samples_median.reshape(-1, D))
-                samples_median = samples_median.reshape(B, L, D)
+                all_generated_samples.append(output)
+                # [B * L, D]
+                samples_median = output.median(dim=0).values
                 samples_median = torch.from_numpy(samples_median).to(self.args.device)
-                all_target.append(c_target)
-                all_evalpoint.append(eval_points)
-                all_observed_point.append(observed_points)
-                all_observed_time.append(observed_time)
-                all_generated_samples.append(samples)
                 all_generated_samples_median.append(samples_median)
 
-                mse_current = ((samples_median - c_target) * eval_points) ** 2
-                mae_current = torch.abs((samples_median - c_target) * eval_points) 
+                # [B * L, D]
+                observed_data = dataset.inverse(observed_data.reshape(-1, D))
+                mse_current = ((samples_median - observed_data) * target_mask) ** 2
+                mae_current = torch.abs((samples_median - observed_data) * target_mask) 
 
-                mse_total += mse_current.sum().item()
-                mae_total += mae_current.sum().item()
-                evalpoints_total += eval_points.sum().item()
+                mse_total       += mse_current.sum().item()
+                mae_total       += mae_current.sum().item()
+                target_mask_sum += target_mask.sum().item()
 
-            logger.info(f"RMSE: {np.sqrt(mse_total / evalpoints_total)}")
-            logger.info(f"MAE: {mae_total / evalpoints_total}")
-            all_generated_samples_median = torch.cat(all_generated_samples_median, dim=0).cpu()
-            all_generated_samples_median = all_generated_samples_median.view(-1)
-            dataset.result_to_csv(all_generated_samples_median)
+            logger.info(f"RMSE: {np.sqrt(mse_total / target_mask_sum)}")
+            logger.info(f"MAE: {mae_total / target_mask_sum}")
+
+            # [B * L, D]
+            all_gt_mask = torch.cat(all_gt_mask, dim=0).cpu()
+            all_observed_data = torch.cat(all_observed_data, dim=0).cpu()
+            all_generated_samples = torch.cat(all_generated_samples, dim=0).cpu()
+            # [n_samples, B * L, D]
+            all_generated_samples_median = torch.cat(all_generated_samples_median, dim=1).cpu()
+            dataset.save_result(observed_data=all_observed_data,
+                                observed_mask=all_observed_mask,
+                                gt_mask=all_gt_mask,
+                                samples_data=all_generated_samples,
+                                impute_data=all_generated_samples_median)

@@ -1,13 +1,15 @@
 import os
+import pickle
 
 import torch
 import numpy as np
 import pandas as pd
-from pygrinder import mcar
+import scipy.stats as st
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset, DataLoader
 
-from utils.tools import logger, add_missing
+from utils.tools import add_missing
 
 
 class CustomDataset(Dataset):
@@ -67,21 +69,24 @@ class CustomDataset(Dataset):
             data = data.cpu()
         return self.scaler.inverse_transform(data)
 
-    def result_to_csv(self, imputation):
+    def save_result(self, observed_data, observed_mask, gt_mask, samples_data, impute_data):
         df = pd.DataFrame()
         df['date'] = self.test_date
-        observed_data = self.observed_data.copy()
-        observed_data = self.inverse(observed_data)
-        observed_data[self.observed_mask == 0] = np.nan
+        observed_data[observed_mask == 0 or gt_mask == 0] = np.nan
         df[self.args.target] = observed_data
-
-        # [L, D] L maybe less than original length.
-        imputation = imputation.numpy()
-        temp = np.full(len(self.test_date), np.nan)
-        temp[:len(imputation), ] = imputation
-        df['imputation'] = temp
+        df[[target + '_imputation' for target in self.args.target]] = impute_data
         path = os.path.dirname(self.args.checkpoints_path)
         df.to_csv(os.path.join(path, 'result.csv'), index=False, float_format='%.2f')
+        np.save(os.path.join(path, 'samples_data.npy'), samples_data)
+        return 
+        # [n_samples, B*L, D]
+        n_samples, L, D = samples_data.shape
+        lower_CI_list, higher_CI_list = [0] * n_samples, [0] * n_samples
+        for i in range(n_samples):
+            lower_CI_list[i], higher_CI_list[i] = st.t.interval(0.95,
+                                                    L - 1,
+                                                    loc=np.mean(impute_data[i, :, :], 0),
+                                                    scale=st.sem(impute_data[i, :, :]))
 
 def data_provider(args, flag : str):
     assert flag in ['train', 'validation', 'test']

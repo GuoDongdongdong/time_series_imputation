@@ -118,22 +118,6 @@ class Model(nn.Module):
             loss_sum += loss.detach()
         return loss_sum / self.num_steps
 
-    def cal_loss_validation(self, batch):
-        (
-            observed_data,
-            observed_mask,
-            observed_tp,
-            gt_mask,
-            for_pattern_mask,
-            _,
-        ) = self.process_data(batch)
-        imputation = self.impute(batch, n_samples=1)
-        imputation = np.squeeze(imputation, axis=1)
-        target_mask = observed_mask - gt_mask
-        temp = (observed_data - imputation) * target_mask
-        loss = (temp ** 2).sum() / target_mask.sum()
-        return loss
-
     def calc_loss(
         self, observed_data, cond_mask, observed_mask, side_info, is_train, set_t=-1
     ):
