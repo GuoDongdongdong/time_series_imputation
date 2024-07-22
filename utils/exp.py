@@ -64,26 +64,26 @@ class Experiment:
             scaler = torch.cuda.amp.grad_scaler.GradScaler()
 
         for epoch in range(self.args.epochs):
-            # train_loss = []
-            # self.model.train()
-            # for i, x in enumerate(dataloader):
-            #     optimizer.zero_grad()
-            #     loss = self.model(x)
+            train_loss = []
+            self.model.train()
+            for i, x in enumerate(dataloader):
+                optimizer.zero_grad()
+                loss = self.model(x)
 
-            #     if self.args.use_amp:
-            #         scaler.scale(loss).backward()
-            #         scaler.step(optimizer)
-            #         scaler.update()
-            #     else:
-            #         loss.backward()
-            #         optimizer.step()
+                if self.args.use_amp:
+                    scaler.scale(loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    loss.backward()
+                    optimizer.step()
 
-            #     train_loss.append(loss.item())
-            #     if (i + 1) % 100 == 0:
-            #         logger.info("iters: {0}, epoch: {1} loss: {2:.7f}"
-            #                      .format(i + 1, epoch + 1, loss.item()))
+                train_loss.append(loss.item())
+                if (i + 1) % 100 == 0:
+                    logger.info("iters: {0}, epoch: {1} loss: {2:.7f}"
+                                 .format(i + 1, epoch + 1, loss.item()))
 
-            # train_loss = np.average(train_loss)
+            train_loss = np.average(train_loss)
             validation_loss = self.validate()
             logger.info("Epoch: {0} Train Loss: {1:.7f} Vali Loss: {2:.7f}".format(epoch + 1, train_loss, validation_loss))
 
