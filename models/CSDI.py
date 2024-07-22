@@ -3,7 +3,6 @@ import torch.nn as nn
 import numpy as np
 
 from models.diffusion_model import diff_CSDI
-from pypots.imputation import CSDI
 
 class Model(nn.Module):
     def __init__(self, args):
@@ -118,30 +117,14 @@ class Model(nn.Module):
             loss_sum += loss.detach()
         return loss_sum / self.num_steps
 
-    def cal_loss_validation(self, batch):
-        (
-            observed_data,
-            observed_mask,
-            observed_tp,
-            gt_mask,
-            for_pattern_mask,
-            _,
-        ) = self.process_data(batch)
-        imputation = self.impute(batch, n_samples=1)
-        imputation = np.squeeze(imputation, axis=1)
-        target_mask = observed_mask - gt_mask
-        temp = (observed_data - imputation) * target_mask
-        loss = (temp ** 2).sum() / target_mask.sum()
-        return loss
-
     def calc_loss(
         self, observed_data, cond_mask, observed_mask, side_info, is_train, set_t=-1
     ):
         B, K, L = observed_data.shape
-        if is_train != 1:  # for validation
-            t = (torch.ones(B) * set_t).long().to(self.device)
-        else:
+        if is_train:
             t = torch.randint(0, self.num_steps, [B]).to(self.device)
+        else:
+            t = (torch.ones(B) * set_t).long().to(self.device)
         current_alpha = self.alpha_torch[t]  # (B,1,1)
         noise = torch.randn_like(observed_data)
         noisy_data = (current_alpha ** 0.5) * observed_data + (1.0 - current_alpha) ** 0.5 * noise
@@ -220,7 +203,7 @@ class Model(nn.Module):
             imputed_samples[:, i] = current_sample.detach()
         return imputed_samples
 
-    def forward(self, batch, is_train=1):
+    def forward(self, batch, is_train=True):
         (
             observed_data,
             observed_mask,
@@ -229,21 +212,19 @@ class Model(nn.Module):
             for_pattern_mask,
             _,
         ) = self.process_data(batch)
-        if is_train == 0:
-            cond_mask = gt_mask
-        elif self.target_strategy != "random":
-            cond_mask = self.get_hist_mask(
+        if is_train:
+            if self.target_strategy == "random":
+                self.get_randmask(observed_mask)
+            else:
+                cond_mask = self.get_hist_mask(
                 observed_mask, for_pattern_mask=for_pattern_mask
             )
         else:
-            cond_mask = self.get_randmask(observed_mask)
+            cond_mask = gt_mask
 
         side_info = self.get_side_info(observed_tp, cond_mask)
-
-        if is_train == 1:
-            return self.calc_loss(observed_data, cond_mask, observed_mask, side_info, is_train)
-        else:
-            return self.calc_loss_valid(observed_data, cond_mask, observed_mask, side_info, is_train)
+        loss = self.calc_loss if is_train else self.calc_loss_valid
+        return loss(observed_data, cond_mask, observed_mask, side_info, is_train)
 
     def evaluate(self, batch, n_samples):
         (

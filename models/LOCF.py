@@ -1,10 +1,7 @@
-from models.base import BaseModel
-
-
 from pypots.imputation import LOCF
 
 
-class Model(BaseModel) :
+class Model() :
 
 
     def __init__(self, args):

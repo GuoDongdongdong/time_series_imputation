@@ -84,13 +84,13 @@ def parse_args():
     parser.add_argument('-n_samples', type=int, default=100, help='')
 
     args = parser.parse_args()
+    args.features = len(args.target)
     args.gpu = args.gpu and torch.cuda.is_available()
     time_now = datetime.datetime.now().__format__("%Y%m%d_T%H%M%S")
     args.log_path = os.path.join(args.log_dir, args.model, time_now)
     args.checkpoints_path = os.path.join(args.checkpoints_dir, args.model, time_now)
     os.makedirs(args.log_path, exist_ok=True)
     os.makedirs(args.checkpoints_path, exist_ok=True)
-    args.features = len(args.target)
     # save all configuration.
     config = configparser.ConfigParser(vars(args))
     with open(os.path.join(args.log_path, 'config.ini'), 'w') as f:
@@ -110,7 +110,6 @@ def main() :
         args.checkpoints_path = 'checkpoints/CSDI/20240720_T184623/checkpoint.pth'
         exp.load_model(args.checkpoints_path)
         exp.impute()
-
 
 if __name__ == '__main__' :
     main()
