@@ -68,7 +68,7 @@ class Experiment:
             self.model.train()
             for batch in dataloader:
                 optimizer.zero_grad()
-                loss = self.model(batch=batch, is_train=1)
+                loss = self.model(batch=batch, is_train=True)
 
                 if self.args.use_amp:
                     scaler.scale(loss).backward()
@@ -95,7 +95,7 @@ class Experiment:
         self.model.eval()
         with torch.no_grad():
             for batch in dataloader:
-                loss = self.model(batch=batch, is_train=0)
+                loss = self.model(batch=batch, is_train=False)
                 validation_loss.append(loss.item())
 
         validation_loss = np.average(validation_loss)
