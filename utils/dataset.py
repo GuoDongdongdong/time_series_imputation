@@ -1,5 +1,6 @@
 import os
 import pickle
+from typing import Union
 
 import torch
 import numpy as np
@@ -64,10 +65,21 @@ class CustomDataset(Dataset):
     def __len__(self):
         return len(self.observed_data) - self.args.seq_len
 
-    def inverse(self, data) :
-        if torch.is_tensor(data):
-            data = data.cpu()
+    def _inverse_ndarry(self, data : np.ndarray):
+        assert data.ndim == 2, f"innverse need data's shape like [length, features], but got {data.shape}"
         return self.scaler.inverse_transform(data)
+
+    def _inverse_tensor(self, data : torch.Tensor) :
+        device = data.device
+        res = self._inverse_ndarry(data.cpu().numpy())
+        return torch.from_numpy(res).to(device)
+
+    def inverse(self, data : Union[np.ndarray | torch.Tensor]) :
+        if isinstance(data, np.ndarray):
+            return self._inverse_ndarry(data)
+        if isinstance(data, torch.Tensor):
+            return self._inverse_tensor(data)
+        raise TypeError(f'only support ndarry and Tensor, but got {type(data)}.')
 
     def save_result(self, observed_data, observed_mask, gt_mask, samples_data, impute_data):
         df = pd.DataFrame()
@@ -97,7 +109,6 @@ def data_provider(args, flag : str):
                             batch_size=args.batch_size,
                             shuffle=True if flag == 'train' else False,
                             num_workers=args.num_workers,
-                            sampler=sampler,
-                            drop_last=True if flag == 'test' else False
+                            sampler=sampler
                             )
     return dataset, dataloader

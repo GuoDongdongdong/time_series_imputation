@@ -107,8 +107,8 @@ def main() :
     if args.train:
         exp.train()
     else:
-        args.checkpoints_path = 'checkpoints/CSDI/20240722_T093340/checkpoint.pth'
-        exp.load_model(args.checkpoints_path)
+        # args.checkpoints_path = 'checkpoints/CSDI/20240722_T093340/checkpoint.pth'
+        # exp.load_model(args.checkpoints_path)
         exp.impute()
 
 if __name__ == '__main__' :
