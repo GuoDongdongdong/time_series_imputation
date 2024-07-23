@@ -118,7 +118,7 @@ class Experiment:
                 observed_data = batch['observed_data']
                 observed_mask = batch['observed_mask']
                 gt_mask       = batch['gt_mask']
-                target_mask = observed_mask - gt_mask.float()
+                target_mask = observed_mask - gt_mask
                 all_gt_mask.append(gt_mask)
                 all_observed_mask.append(observed_mask)
                 all_observed_data.append(observed_data)

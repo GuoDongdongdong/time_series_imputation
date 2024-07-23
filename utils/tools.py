@@ -81,7 +81,7 @@ def mask_original_dataset(dir_name:str, file_name:str, missing_rate: float, targ
     The observed data in data are completely randomly masked with probability p
 """
 def add_missing(data : np.ndarray, p : float):
-    observed_mask = (~np.isnan(data)).reshape(-1)
+    observed_mask = (1 - np.isnan(data)).reshape(-1)
     observed_index = np.where(observed_mask)[0]
     artifical_missing_index = np.random.choice(observed_index,
                                                int(len(observed_index) * p),
