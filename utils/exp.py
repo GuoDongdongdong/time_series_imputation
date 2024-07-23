@@ -118,7 +118,7 @@ class Experiment:
                 observed_data = batch['observed_data']
                 observed_mask = batch['observed_mask']
                 gt_mask       = batch['gt_mask']
-                target_mask = observed_mask - gt_mask
+                target_mask = observed_mask - gt_mask.float()
                 all_gt_mask.append(gt_mask)
                 all_observed_mask.append(observed_mask)
                 all_observed_data.append(observed_data)
@@ -131,16 +131,16 @@ class Experiment:
                 output = output.reshape(n_samples, B * L, D)
                 # denormlization
                 for i in range(n_samples):
-                    output[i, :, :] = dataset.inverse(output[i, :, :])
+                    output[i, :, :] = torch.from_numpy(dataset.inverse(output[i, :, :]))
 
                 all_generated_samples.append(output)
                 # [B * L, D]
-                samples_median = output.median(dim=0).values
-                samples_median = torch.from_numpy(samples_median).to(self.args.device)
+                samples_median = output.median(dim=0).values.cpu()
                 all_generated_samples_median.append(samples_median)
 
                 # [B * L, D]
-                observed_data = dataset.inverse(observed_data.reshape(-1, D))
+                observed_data = torch.from_numpy(dataset.inverse(observed_data.reshape(-1, D))).cpu()
+                target_mask = target_mask.reshape(B * L, D)
                 mse_current = ((samples_median - observed_data) * target_mask) ** 2
                 mae_current = torch.abs((samples_median - observed_data) * target_mask) 
 
@@ -152,11 +152,11 @@ class Experiment:
             logger.info(f"MAE: {mae_total / target_mask_sum}")
 
             # [B * L, D]
-            all_gt_mask = torch.cat(all_gt_mask, dim=0).cpu()
-            all_observed_data = torch.cat(all_observed_data, dim=0).cpu()
-            all_generated_samples = torch.cat(all_generated_samples, dim=0).cpu()
+            all_gt_mask = torch.cat(all_gt_mask, dim=0).cpu().reshape(-1, D)
+            all_observed_data = torch.cat(all_observed_data, dim=0).cpu().reshape(-1, D)
+            all_generated_samples = torch.cat(all_generated_samples, dim=0).cpu().reshape(-1, D)
             # [n_samples, B * L, D]
-            all_generated_samples_median = torch.cat(all_generated_samples_median, dim=1).cpu()
+            all_generated_samples_median = torch.cat(all_generated_samples_median, dim=1).cpu().reshape(-1, D)
             dataset.save_result(observed_data=all_observed_data,
                                 observed_mask=all_observed_mask,
                                 gt_mask=all_gt_mask,

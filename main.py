@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument('-checkpoints_dir', type=str, default='checkpoints', help='')
     parser.add_argument('-log_dir', type=str, default='log', help='')
 
-    parser.add_argument('-train', type=bool, default=True, help='')
+    parser.add_argument('-train', type=bool, default=False, help='')
     parser.add_argument('-model', type=str, default='CSDI', help='')
     parser.add_argument('-target', type=list[str], default=['humidity_missing'], help='')
     parser.add_argument('-seq_len', type=int, default=48, help='')
@@ -107,7 +107,7 @@ def main() :
     if args.train:
         exp.train()
     else:
-        args.checkpoints_path = 'checkpoints/CSDI/20240720_T184623/checkpoint.pth'
+        args.checkpoints_path = 'checkpoints/CSDI/20240722_T093340/checkpoint.pth'
         exp.load_model(args.checkpoints_path)
         exp.impute()
 

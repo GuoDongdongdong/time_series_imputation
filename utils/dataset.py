@@ -71,7 +71,8 @@ class CustomDataset(Dataset):
 
     def save_result(self, observed_data, observed_mask, gt_mask, samples_data, impute_data):
         df = pd.DataFrame()
-        df['date'] = self.test_date
+        BL, D = observed_data.shape
+        df['date'] = self.test_date[0 : BL]
         observed_data[observed_mask == 0 or gt_mask == 0] = np.nan
         df[self.args.target] = observed_data
         df[[target + '_imputation' for target in self.args.target]] = impute_data
@@ -96,6 +97,7 @@ def data_provider(args, flag : str):
                             batch_size=args.batch_size,
                             shuffle=True if flag == 'train' else False,
                             num_workers=args.num_workers,
-                            sampler=sampler
+                            sampler=sampler,
+                            drop_last=True if flag == 'test' else False
                             )
     return dataset, dataloader
