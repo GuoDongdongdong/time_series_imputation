@@ -115,13 +115,15 @@ class Experiment:
             all_generated_samples = []
             all_generated_samples_median = []
             for batch in dataloader:
+                #[B, L, D]
                 observed_data = batch['observed_data']
+                #[B, L, D]
                 observed_mask = batch['observed_mask']
+                #[B, L, D]
                 gt_mask       = batch['gt_mask']
                 target_mask = observed_mask - gt_mask
                 all_gt_mask.append(gt_mask)
                 all_observed_mask.append(observed_mask)
-                all_observed_data.append(observed_data)
                 # [B, n_samples, D, L]
                 output = self.model.impute(batch=batch, n_samples=self.args.n_samples)
                 B, n_samples, D, L = output.shape
@@ -140,6 +142,7 @@ class Experiment:
 
                 # [B * L, D]
                 observed_data = torch.from_numpy(dataset.inverse(observed_data.reshape(-1, D))).cpu()
+                all_observed_data.append(observed_data)
                 target_mask = target_mask.reshape(B * L, D)
                 mse_current = ((samples_median - observed_data) * target_mask) ** 2
                 mae_current = torch.abs((samples_median - observed_data) * target_mask) 
