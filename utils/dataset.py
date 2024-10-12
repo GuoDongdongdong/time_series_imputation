@@ -57,7 +57,8 @@ class CustomDataset(Dataset):
             'observed_data' : self.observed_data[l : r],
             'observed_mask' : self.observed_mask[l : r],
             'gt_mask'  : self.ground_truth_mask[l : r],
-            'timepoints'    : np.arange(self.args.seq_len)
+            'timepoints'    : np.arange(self.args.seq_len),
+            'index' : index
         }
         return x
 

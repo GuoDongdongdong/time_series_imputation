@@ -214,7 +214,7 @@ class Model(nn.Module):
         ) = self.process_data(batch)
         if is_train:
             if self.target_strategy == "random":
-                self.get_randmask(observed_mask)
+                cond_mask = self.get_randmask(observed_mask)
             else:
                 cond_mask = self.get_hist_mask(
                 observed_mask, for_pattern_mask=for_pattern_mask
