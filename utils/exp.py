@@ -6,13 +6,13 @@ import numpy as np
 from utils.dataset import data_provider
 from utils.tools import logger, EarlyStopping
 # from models import SAITS, BRITS, Transformer, USGAN, LOCF, CSDI
-from models import CSDI
+from models import CSDI, BRITS
 
 class Experiment:
     def __init__(self, args):
         self.model_dict = {
             # 'SAITS'       : SAITS,
-            # 'BRITS'       : BRITS,
+            'BRITS'       : BRITS,
             # 'Transformer' : Transformer,
             # 'USGAN'       : USGAN,
             # 'LOCF'        : LOCF,

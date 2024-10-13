@@ -27,18 +27,13 @@ class Model(nn.Module):
 
     """
 
-    def __init__(
-        self,
-        n_steps: int,
-        n_features: int,
-        rnn_hidden_size: int,
-    ):
+    def __init__(self, args):
         super().__init__()
-        self.n_steps = n_steps
-        self.n_features = n_features
-        self.rnn_hidden_size = rnn_hidden_size
+        self.n_steps = args.seq_len
+        self.n_features = args.features
+        self.rnn_hidden_size = args.rnn_hidden_size
 
-        self.model = BackboneBRITS(n_steps, n_features, rnn_hidden_size)
+        self.model = BackboneBRITS(self.n_steps, self.n_features, self.rnn_hidden_size)
 
     def forward(self, inputs: dict, training: bool = True) -> dict:
         (
@@ -240,7 +235,6 @@ def _check_inputs(
         ).any(), "`masks` mustn't contain NaN values, but detected NaN in it"
 
     return lib
-
 
 
 def calc_mae(
