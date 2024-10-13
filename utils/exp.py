@@ -2,6 +2,7 @@ import os
 
 import torch
 import numpy as np
+import torch.nn as nn
 
 from utils.dataset import data_provider
 from utils.tools import logger, EarlyStopping
@@ -54,7 +55,9 @@ class Experiment:
         self.model.load_state_dict(torch.load(path))
 
     def params(self):
-        return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+        if isinstance(self.model, nn.Module):
+            return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+        return 0
 
     def train(self) :
         dataset, dataloader = self._get_data('train')
