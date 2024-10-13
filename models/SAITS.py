@@ -9,42 +9,34 @@ from utils.tools import calc_mae
 
 
 class Model(nn.Module):
-    def __init__(
-        self,
-        n_layers: int,
-        n_steps: int,
-        n_features: int,
-        d_model: int,
-        n_heads: int,
-        d_k: int,
-        d_v: int,
-        d_ffn: int,
-        dropout: float,
-        attn_dropout: float,
-        diagonal_attention_mask: bool = True,
-        ORT_weight: float = 1,
-        MIT_weight: float = 1,
-        customized_loss_func: Callable = calc_mae,
-    ):
+    def __init__(self, args):
         super().__init__()
-        self.n_layers = n_layers
-        self.n_steps = n_steps
-        self.diagonal_attention_mask = diagonal_attention_mask
-        self.ORT_weight = ORT_weight
-        self.MIT_weight = MIT_weight
-        self.customized_loss_func = customized_loss_func
-
+        self.n_layers = args.n_layers
+        self.n_steps = args.seq_len
+        self.diagonal_attention_mask = args.diagonal_attention_mask
+        self.ORT_weight = args.ORT_weight
+        self.MIT_weight = args.MIT_weight
+        self.customized_loss_func = calc_mae
+        self.d_model = args.d_model
+        self.d_inner = args.d_inner
+        self.n_heads = args.n_heads
+        self.d_k = args.d_k
+        self.d_v = args.d_v
+        self.d_ffn = args.d_ffn
+        self.dropout = args.dropout
+        self.attn_dropout = args.dropout
+        
         self.encoder = BackboneSAITS(
-            n_steps,
-            n_features,
-            n_layers,
-            d_model,
-            n_heads,
-            d_k,
-            d_v,
-            d_ffn,
-            dropout,
-            attn_dropout,
+            self.n_steps,
+            self.n_features,
+            self.n_layers,
+            self.d_model,
+            self.n_heads,
+            self.d_k,
+            self.d_v,
+            self.d_ffn,
+            self.dropout,
+            self.attn_dropout,
         )
 
     def forward(
