@@ -7,14 +7,23 @@ from models.diffusion_model import diff_CSDI
 class Model(nn.Module):
     def __init__(self, args):
         super().__init__()
-        self.args = args
-        self.device = args.device
+        self.device     = args.device
         self.target_dim = args.features
 
-        self.emb_time_dim = args.timeemb
-        self.emb_feature_dim = args.featureemb
-        self.is_unconditional = args.is_unconditional
-        self.target_strategy = args.target_strategy
+        self.n_samples               = args.CSDI_n_samples
+        self.emb_time_dim            = args.CSDI_timeemb
+        self.emb_feature_dim         = args.CSDI_featureemb
+        self.is_unconditional        = args.CSDI_is_unconditional
+        self.target_strategy         = args.CSDI_target_strategy
+        self.channels                = args.CSDI_channels
+        self.num_steps               = args.CSDI_num_steps
+        self.diffusion_embedding_dim = args.CSDI_diffusion_embedding_dim
+        self.schedule                = args.CSDI_schedule
+        self.nheads                  = args.CSDI_nheads
+        self.is_linear               = args.CSDI_is_linear
+        self.layers                  = args.CSDI_layers
+        self.beta_start              = args.CSDI_beta_start
+        self.beta_end                = args.CSDI_beta_end
 
         self.emb_total_dim = self.emb_time_dim + self.emb_feature_dim
         if self.is_unconditional == False:
@@ -24,24 +33,23 @@ class Model(nn.Module):
         )
 
         input_dim = 1 if self.is_unconditional == True else 2
-        self.diffmodel = diff_CSDI(channels=args.channels,
-                                   num_steps=args.num_steps,
-                                   diffusion_embedding_dim=args.diffusion_embedding_dim,
+        self.diffmodel = diff_CSDI(channels=self.channels,
+                                   num_steps=self.num_steps,
+                                   diffusion_embedding_dim=self.diffusion_embedding_dim,
                                    side_dim=self.emb_total_dim,
-                                   nheads=args.nheads,
-                                   is_linear=args.is_linear,
-                                   layers=args.layers,
+                                   nheads=self.nheads,
+                                   is_linear=self.is_linear,
+                                   layers=self.layers,
                                    inputdim=input_dim)
 
         # parameters for diffusion models
-        self.num_steps = args.num_steps
-        if args.schedule == "quad":
+        if self.schedule == "quad":
             self.beta = np.linspace(
-                args.beta_start ** 0.5, args.beta_end ** 0.5, self.num_steps
+                self.beta_start ** 0.5, self.beta_end ** 0.5, self.num_steps
             ) ** 2
-        elif args.schedule == "linear":
+        elif self.schedule == "linear":
             self.beta = np.linspace(
-                args.beta_start, args.beta_end, self.num_steps
+                self.beta_start, self.beta_end, self.num_steps
             )
 
         self.alpha_hat = 1 - self.beta
@@ -161,7 +169,7 @@ class Model(nn.Module):
         cond_mask = gt_mask
         side_info = self.get_side_info(observed_tp=observed_tp, cond_mask=cond_mask)
         if n_samples == None:
-            n_samples = self.args.n_samples
+            n_samples = self.n_samples
 
         B, K, L = observed_data.shape
 
