@@ -7,16 +7,16 @@ import torch.nn as nn
 from utils.dataset import data_provider
 from utils.tools import logger, EarlyStopping
 # from models import SAITS, BRITS, Transformer, USGAN, LOCF, CSDI
-from models import CSDI, BRITS
+from models import CSDI, BRITS, LOCF, SAITS, Transformer, USGAN
 
 class Experiment:
     def __init__(self, args):
         self.model_dict = {
-            # 'SAITS'       : SAITS,
+            'SAITS'       : SAITS,
             'BRITS'       : BRITS,
-            # 'Transformer' : Transformer,
-            # 'USGAN'       : USGAN,
-            # 'LOCF'        : LOCF,
+            'Transformer' : Transformer,
+            'USGAN'       : USGAN,
+            'LOCF'        : LOCF,
             'CSDI'        : CSDI
         }
         self.args = args
@@ -106,6 +106,10 @@ class Experiment:
 
     def impute(self):
         dataset, dataloader = self._get_data('test')
+        if hasattr(self.model, 'impute'):
+            self.model.impute(dataset)
+            return
+        
         with torch.no_grad():
             self.model.eval()
             mse_total = 0
@@ -150,8 +154,8 @@ class Experiment:
                 mae_total       += mae_current.sum().item()
                 target_mask_sum += target_mask.sum().item()
 
-            logger.info(f"RMSE: {np.sqrt(mse_total / target_mask_sum)}")
             logger.info(f"MAE: {mae_total / target_mask_sum}")
+            logger.info(f"RMSE: {np.sqrt(mse_total / target_mask_sum)}")
 
             # [B * L, D]
             all_gt_mask = torch.cat(all_gt_mask, dim=0).cpu().reshape(-1, D)
