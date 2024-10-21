@@ -9,8 +9,8 @@ class Model(nn.Module):
         super().__init__()
         self.device     = args.device
         self.target_dim = args.features
+        self.n_samples  = args.n_samples
 
-        self.n_samples               = args.CSDI_n_samples
         self.emb_time_dim            = args.CSDI_timeemb
         self.emb_feature_dim         = args.CSDI_featureemb
         self.is_unconditional        = args.CSDI_is_unconditional

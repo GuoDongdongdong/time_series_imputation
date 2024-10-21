@@ -5,9 +5,9 @@ import numpy as np
 import torch.nn as nn
 
 from utils.dataset import data_provider
-from utils.tools import logger, EarlyStopping
-# from models import SAITS, BRITS, Transformer, USGAN, LOCF, CSDI
+from utils.tools import logger, EarlyStopping, DISCRIMINATIVE_MODEL_LIST, GENERATIVE_MODEL_LIST
 from models import CSDI, BRITS, LOCF, SAITS, Transformer, USGAN
+
 
 class Experiment:
     def __init__(self, args):
@@ -106,7 +106,7 @@ class Experiment:
 
     def impute(self):
         dataset, dataloader = self._get_data('test')
-        if hasattr(self.model, 'impute'):
+        if self.args.model in STATISTICAL_MODEL_LIST:
             self.model.impute(dataset)
             return
         
@@ -122,8 +122,11 @@ class Experiment:
             all_generated_samples = []
             all_generated_samples_median = []
             for batch in dataloader:
-                # [B, n_samples, D, L]
-                output = self.model.impute(batch=batch, n_samples=self.args.n_samples)
+                if self.args.model in GENERATIVE_MODEL_LIST:
+                    # [B, n_samples, D, L]
+                    output = self.model.impute(batch, self.args.n_samples)
+                elif self.args.model in DISCRIMINATIVE_MODEL_LIST:
+                    output = self.model.impute(batch)
                 B, n_samples, D, L = output.shape
                 # [n_samples, B * L, D]
                 output = output.reshape(n_samples, B * L, D)
