@@ -1,16 +1,14 @@
 import os
-import pickle
 from typing import Union
 
 import torch
 import numpy as np
 import pandas as pd
 import scipy.stats as st
-import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset, DataLoader
 
-from utils.tools import add_missing
+from utils.tools import add_missing, get_deltas
 
 
 class CustomDataset(Dataset):
@@ -46,7 +44,8 @@ class CustomDataset(Dataset):
         self.observed_mask = 1 - np.isnan(self.observed_data)
         # artifical mask
         self.ground_truth_mask = add_missing(self.observed_data, self.args.missing_rate)
-
+        # time_gap
+        self.time_gap = get_deltas(self.ground_truth_mask)
         self.observed_data = np.nan_to_num(self.observed_data)
 
         if flag == 'test':
@@ -54,6 +53,20 @@ class CustomDataset(Dataset):
 
     def __getitem__(self, index):
         l, r = index, index + self.args.seq_len
+        if self.args.model == 'BRITS':
+            x = {
+                'forward':{
+                    'X': self.observed_data[l : r],
+                    'missing_mask' : self.ground_truth_mask[l : r],
+                    'deltas' : self.time_gap[l : r]
+                },
+                'backward' : {
+                    'X': self.observed_data[l : r],
+                    'missing_mask' : self.ground_truth_mask[l : r],
+                    'deltas' : self.time_gap[l : r]
+                }
+            }
+            return x
         x = {
             'observed_data' : self.observed_data[l : r],
             'observed_mask' : self.observed_mask[l : r],

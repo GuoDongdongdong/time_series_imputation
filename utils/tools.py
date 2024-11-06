@@ -99,6 +99,24 @@ def add_missing(data : np.ndarray, p : float):
 
 
 """
+    BRITS model need time gap matrix.
+    The following function return deltas matrix (i.e. time gap matrix) from mask matrix.
+"""
+def get_deltas(mask : np.ndarray):
+    assert mask.ndim == 2, f"mask shape should like [L, D], but got shape: {mask.shape}"
+    def func(col):
+        res = np.zeros_like(col, dtype=np.float32)
+        for i in range(1, len(col)):
+            if col[i] != 0:
+                res[i] = 1.0
+            else :
+                res[i] = 1.0 + res[i - 1]
+        return res
+    deltas = np.apply_along_axis(func, 0, mask)
+    return deltas
+
+
+"""
 Evaluation metrics related to error calculation (like in tasks regression, imputation etc).
 """
 

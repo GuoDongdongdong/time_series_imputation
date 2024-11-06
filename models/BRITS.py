@@ -34,8 +34,16 @@ class Model(nn.Module):
         self.rnn_hidden_size = args.rnn_hidden_size
 
         self.model = BackboneBRITS(self.n_steps, self.n_features, self.rnn_hidden_size)
+    
+    def evaluate(self, batch:dict, training:bool=True) -> torch.Tensor:
+        res = self.forward(batch)
+        return res['loss']
 
-    def forward(self, inputs: dict, training: bool = True) -> dict:
+    def impute(self, batch:dict, n_samples:int=None) -> torch.Tensor:
+        res = self.forward(batch)
+        return res['imputed_data']
+
+    def forward(self, inputs:dict) -> dict:
         (
             imputed_data,
             f_reconstruction,
@@ -45,23 +53,15 @@ class Model(nn.Module):
             consistency_loss,
             reconstruction_loss,
         ) = self.model(inputs)
-
         results = {
-            "imputed_data": imputed_data,
+            'imputed_data'        : imputed_data,
+            'consistency_loss'    : consistency_loss,
+            'reconstruction_loss' : reconstruction_loss,
+            'loss'                : consistency_loss + reconstruction_loss,
+            'reconstruction'      : (f_reconstruction + b_reconstruction) / 2,
+            'f_reconstruction'    : f_reconstruction,
+            'b_reconstruction'    : b_reconstruction
         }
-
-        # if in training mode, return results with losses
-        if training:
-            results["consistency_loss"] = consistency_loss
-            results["reconstruction_loss"] = reconstruction_loss
-            loss = consistency_loss + reconstruction_loss
-
-            # `loss` is always the item for backward propagating to update the model
-            results["loss"] = loss
-            results["reconstruction"] = (f_reconstruction + b_reconstruction) / 2
-            results["f_reconstruction"] = f_reconstruction
-            results["b_reconstruction"] = b_reconstruction
-
         return results
 
 
