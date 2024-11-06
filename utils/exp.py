@@ -5,7 +5,7 @@ import numpy as np
 import torch.nn as nn
 
 from utils.dataset import data_provider
-from utils.tools import logger, EarlyStopping, DISCRIMINATIVE_MODEL_LIST, GENERATIVE_MODEL_LIST
+from utils.tools import logger, EarlyStopping, DISCRIMINATIVE_MODEL_LIST, GENERATIVE_MODEL_LIST, STATISTICAL_MODEL_LIST
 from models import CSDI, BRITS, LOCF, SAITS, Transformer, USGAN
 
 
@@ -51,6 +51,18 @@ class Experiment:
     def _get_data(self, flag):
         return data_provider(self.args, flag)
 
+    def _move_cuda(self, obj : dict | torch.Tensor):
+        if isinstance(obj, torch.Tensor):
+            return obj.to(self.args.device, dtype=torch.float32)
+        elif isinstance(obj, dict):
+            return {key : self._move_cuda(val) for key, val in obj.items()}
+        elif isinstance(obj, list):
+            return list(self._move_cuda(item) for item in obj)
+        elif isinstance(obj, tuple):
+            return tuple(self._move_cuda(item) for item in obj)
+        else:
+            return obj
+
     def load_model(self, path):
         self.model.load_state_dict(torch.load(path))
 
@@ -59,7 +71,7 @@ class Experiment:
             return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         return 0
 
-    def train(self) :
+    def train(self):
         dataset, dataloader = self._get_data('train')
         early_stop = EarlyStopping(patience=self.args.patience)
         optimizer = self._get_optimizer()
@@ -70,8 +82,9 @@ class Experiment:
             train_loss = []
             self.model.train()
             for batch in dataloader:
+                batch = self._move_cuda(batch)
                 optimizer.zero_grad()
-                loss = self.model(batch=batch, is_train=True)
+                loss = self.model.evaluate(batch, True)
 
                 if self.args.use_amp:
                     scaler.scale(loss).backward()
@@ -98,7 +111,8 @@ class Experiment:
         self.model.eval()
         with torch.no_grad():
             for batch in dataloader:
-                loss = self.model(batch=batch, is_train=False)
+                batch = self._move_cuda(batch)
+                loss = self.model.evaluate(batch, False)
                 validation_loss.append(loss.item())
 
         validation_loss = np.average(validation_loss)
@@ -109,7 +123,7 @@ class Experiment:
         if self.args.model in STATISTICAL_MODEL_LIST:
             self.model.impute(dataset)
             return
-        
+
         with torch.no_grad():
             self.model.eval()
             mse_total = 0
@@ -122,11 +136,7 @@ class Experiment:
             all_generated_samples = []
             all_generated_samples_median = []
             for batch in dataloader:
-                if self.args.model in GENERATIVE_MODEL_LIST:
-                    # [B, n_samples, D, L]
-                    output = self.model.impute(batch, self.args.n_samples)
-                elif self.args.model in DISCRIMINATIVE_MODEL_LIST:
-                    output = self.model.impute(batch)
+                output = self.model.impute(batch, self.args.n_samples)
                 B, n_samples, D, L = output.shape
                 # [n_samples, B * L, D]
                 output = output.reshape(n_samples, B * L, D)

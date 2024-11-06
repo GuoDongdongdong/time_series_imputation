@@ -4,6 +4,7 @@ import numpy as np
 
 from models.diffusion_model import diff_CSDI
 
+
 class Model(nn.Module):
     def __init__(self, args):
         super().__init__()
@@ -157,7 +158,10 @@ class Model(nn.Module):
 
         return total_input
 
-    def impute(self, batch, n_samples = None):
+    def evaluate(self, batch:dict, training:bool=True) -> torch.Tensor:
+        return self.forward(batch, training)
+    
+    def impute(self, batch:dict, n_samples:int=None) -> torch.Tensor:
         (
             observed_data,
             observed_mask,
@@ -233,26 +237,6 @@ class Model(nn.Module):
         side_info = self.get_side_info(observed_tp, cond_mask)
         loss = self.calc_loss if is_train else self.calc_loss_valid
         return loss(observed_data, cond_mask, observed_mask, side_info, is_train)
-
-    def evaluate(self, batch, n_samples):
-        (
-            observed_data,
-            observed_mask,
-            observed_tp,
-            gt_mask,
-            _,
-            cut_length,
-        ) = self.process_data(batch)
-
-        with torch.no_grad():
-            cond_mask = gt_mask
-            target_mask = observed_mask - cond_mask
-
-            samples = self.impute(batch=batch)
-
-            for i in range(len(cut_length)):  # to avoid double evaluation
-                target_mask[i, ..., 0 : cut_length[i].item()] = 0
-        return samples, observed_data, target_mask, observed_mask, observed_tp
 
     def process_data(self, batch):
         observed_data = batch["observed_data"].to(self.device).float()
