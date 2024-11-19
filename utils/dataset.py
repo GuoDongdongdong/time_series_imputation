@@ -27,6 +27,7 @@ class CustomDataset(Dataset):
     def _read_dataset(self, flag):
         path     = os.path.join(self.args.dataset_dir, self.args.dataset_file)
         raw_data = pd.read_csv(path)
+        # csv file needs to have time column named 'date' and we ignore columns that are not in self.args.target
         raw_data = raw_data[['date'] + self.args.target]
         # split dataset to train vali test
         total_len     = len(raw_data)
@@ -34,7 +35,7 @@ class CustomDataset(Dataset):
         vali_len      = int(total_len * self.args.vali_ratio)
         data_border_l = [0, train_len, train_len + vali_len]
         data_border_r = [train_len, train_len + vali_len, total_len]
-        data          = raw_data[raw_data.columns[1:]]
+        data          = raw_data[raw_data.columns[1 : ]]
         # normalize data
         train_data = data[data_border_l[0]:data_border_r[0]]
         self.scaler.fit(train_data)
@@ -53,27 +54,35 @@ class CustomDataset(Dataset):
 
     def __getitem__(self, index):
         l, r = index, index + self.args.seq_len
+        x = dict()
         if self.args.model == 'BRITS':
             x = {
                 'forward':{
-                    'X': self.observed_data[l : r],
+                    'X'            : self.observed_data[l : r],
                     'missing_mask' : self.ground_truth_mask[l : r],
-                    'deltas' : self.time_gap[l : r]
+                    'deltas'       : self.time_gap[l : r]
                 },
                 'backward' : {
-                    'X': self.observed_data[l : r],
+                    'X'            : self.observed_data[l : r],
                     'missing_mask' : self.ground_truth_mask[l : r],
-                    'deltas' : self.time_gap[l : r]
+                    'deltas'       : self.time_gap[l : r]
                 }
             }
-            return x
-        x = {
-            'observed_data' : self.observed_data[l : r],
-            'observed_mask' : self.observed_mask[l : r],
-            'gt_mask'  : self.ground_truth_mask[l : r],
-            'timepoints'    : np.arange(self.args.seq_len),
-            'index' : index
-        }
+        elif self.args.model == 'SAITS':
+            x = {
+                'X' : self.observed_data[l : r],
+                'missing_mask' : self.ground_truth_mask[l : r],
+                'X_ori' : self.observed_data[l : r],
+                'indicating_mask' : self.observed_mask[l : r] - self.ground_truth_mask[l : r] 
+            }
+        elif self.args.model == 'CSDI':
+            x = {
+                'timepoints'    : np.arange(self.args.seq_len),
+                'index'         : index
+            }
+        x['observed_data'] = self.observed_data[l : r]
+        x['observed_mask'] = self.observed_mask[l : r]
+        x['gt_mask']       = self.ground_truth_mask[l : r]
         return x
 
     def __len__(self):

@@ -1,5 +1,6 @@
 import os
 
+import pandas as pd
 import torch
 import numpy as np
 import torch.nn as nn
@@ -63,6 +64,129 @@ class Experiment:
         else:
             return obj
 
+    def _impute_generative_model(self):
+        dataset, dataloader = self._get_data('test')
+        with torch.no_grad():
+            self.model.eval()
+            mse_total = 0
+            mae_total = 0
+            target_mask_sum = 0
+
+            all_gt_mask = []
+            all_observed_data = []
+            all_observed_mask = []
+            all_generated_samples = []
+            all_generated_samples_median = []
+            for batch in dataloader:
+                batch = self._move_cuda(batch)
+                output = self.model.impute(batch, self.args.n_samples)
+                B, n_samples, D, L = output.shape
+                # [n_samples, B * L, D]
+                output = output.reshape(n_samples, B * L, D)
+                # denormlization
+                for i in range(n_samples):
+                    output[i, :, :] = dataset.inverse(output[i, :, :])
+                # [B * L, n_samples, D]
+                all_generated_samples.append(output.permute(1, 0, 2))
+
+                # [B * L, D]
+                samples_median = output.median(dim=0).values.cpu()
+                all_generated_samples_median.append(samples_median)
+
+                # [B * L, D]
+                observed_data = batch['observed_data']
+                observed_mask = batch['observed_mask']
+                gt_mask       = batch['gt_mask']
+                observed_data = dataset.inverse(observed_data.reshape(B * L, D))
+                all_observed_mask.append(observed_mask)
+                all_gt_mask.append(gt_mask)
+                all_observed_data.append(observed_data)
+                target_mask = observed_mask - gt_mask
+                target_mask = target_mask.reshape(B * L, D)
+                mse_current = ((samples_median - observed_data) * target_mask) ** 2
+                mae_current = torch.abs((samples_median - observed_data) * target_mask)
+
+                mse_total       += mse_current.sum().item()
+                mae_total       += mae_current.sum().item()
+                target_mask_sum += target_mask.sum().item()
+
+            logger.info(f"MAE: {mae_total / target_mask_sum}")
+            logger.info(f"RMSE: {np.sqrt(mse_total / target_mask_sum)}")
+
+            # [B * L, D]
+            all_gt_mask = torch.cat(all_gt_mask, dim=0).cpu().reshape(-1, D)
+            # [B * L, D]
+            all_observed_data = torch.cat(all_observed_data, dim=0).cpu().reshape(-1, D)
+            # [B * L, n_samples, D]
+            all_generated_samples = torch.cat(all_generated_samples, dim=0).cpu()
+            # [B * L, D]
+            all_generated_samples_median = torch.cat(all_generated_samples_median, dim=0).cpu()
+            dataset.save_result(observed_data=all_observed_data,
+                                observed_mask=all_observed_mask,
+                                gt_mask=all_gt_mask,
+                                samples_data=all_generated_samples,
+                                impute_data=all_generated_samples_median)
+
+    def _impute_discriminative_model(self):
+        dataset, dataloader = self._get_data('test')
+        with torch.no_grad():
+            self.model.eval()
+            mse_total         = 0
+            mae_total         = 0
+            target_mask_sum   = 0
+            all_gt_mask       = []
+            all_observed_data = []
+            all_observed_mask = []
+            all_generate_data = []
+            for batch in dataloader:
+                batch = self._move_cuda(batch)
+                # [B, L, D]
+                output = self.model.impute(batch)
+                B, L, D = output.shape
+                # denormlization
+                output = dataset.inverse(output.reshape(B * L, D))
+                all_generate_data.append(output)
+                # [B, L, D]
+                observed_data = batch['observed_data']
+                observed_data = dataset.inverse(observed_data.reshape(B * L, D))
+                all_observed_data.append(observed_data)
+                
+                gt_mask = batch['gt_mask']
+                all_gt_mask.append(gt_mask)
+                
+                observed_mask = batch['observed_mask']
+                all_observed_mask.append(observed_mask)
+                
+                target_mask = observed_mask - gt_mask
+                target_mask = target_mask.reshape(B * L, D)
+                mse_current = ((output - observed_data) * target_mask) ** 2
+                mae_current = torch.abs((output - observed_data) * target_mask)
+
+                mse_total       += mse_current.sum().item()
+                mae_total       += mae_current.sum().item()
+                target_mask_sum += target_mask.sum().item()
+
+            logger.info(f"MAE: {mae_total / target_mask_sum}")
+            logger.info(f"RMSE: {np.sqrt(mse_total / target_mask_sum)}")
+
+            # [B * L, D]
+            all_gt_mask       = torch.cat(all_gt_mask, dim=0).cpu().reshape(-1, D)
+            all_observed_data = torch.cat(all_observed_data, dim=0).cpu().reshape(-1, D)
+            all_generate_data = torch.cat(all_generate_data, dim=0).cpu().reshape(-1, D)
+            
+            df = pd.DataFrame()
+            BL, D = all_observed_data.shape
+            df['date'] = dataset.test_date[0 : BL]
+            all_observed_data[all_gt_mask == 0] = np.nan
+            df[self.args.target] = all_observed_data
+            df[[target + '_imputation' for target in self.args.target]] = all_generate_data
+            path = os.path.dirname(self.args.checkpoints_path)
+            df.to_csv(os.path.join(path, 'result.csv'), index=False, float_format='%.2f', na_rep='NaN')
+    
+    def _impute_statistical_model(self):
+        dataset, dataloader = self._get_data('test')
+        self.model.impute(dataset)
+
     def load_model(self, path):
         self.model.load_state_dict(torch.load(path))
 
@@ -119,67 +243,11 @@ class Experiment:
         return validation_loss
 
     def impute(self):
-        dataset, dataloader = self._get_data('test')
         if self.args.model in STATISTICAL_MODEL_LIST:
-            self.model.impute(dataset)
-            return
-
-        with torch.no_grad():
-            self.model.eval()
-            mse_total = 0
-            mae_total = 0
-            target_mask_sum = 0
-
-            all_gt_mask = []
-            all_observed_data = []
-            all_observed_mask = []
-            all_generated_samples = []
-            all_generated_samples_median = []
-            for batch in dataloader:
-                output = self.model.impute(batch, self.args.n_samples)
-                B, n_samples, D, L = output.shape
-                # [n_samples, B * L, D]
-                output = output.reshape(n_samples, B * L, D)
-                # denormlization
-                for i in range(n_samples):
-                    output[i, :, :] = dataset.inverse(output[i, :, :])
-                # [B * L, n_samples, D]
-                all_generated_samples.append(output.permute(1, 0, 2))
-
-                # [B * L, D]
-                samples_median = output.median(dim=0).values.cpu()
-                all_generated_samples_median.append(samples_median)
-
-                # [B * L, D]
-                observed_data = batch['observed_data']
-                observed_mask = batch['observed_mask']
-                gt_mask       = batch['gt_mask']
-                observed_data = dataset.inverse(observed_data.reshape(B * L, D))
-                all_observed_mask.append(observed_mask)
-                all_gt_mask.append(gt_mask)
-                all_observed_data.append(observed_data)
-                target_mask = observed_mask - gt_mask
-                target_mask = target_mask.reshape(B * L, D)
-                mse_current = ((samples_median - observed_data) * target_mask) ** 2
-                mae_current = torch.abs((samples_median - observed_data) * target_mask)
-
-                mse_total       += mse_current.sum().item()
-                mae_total       += mae_current.sum().item()
-                target_mask_sum += target_mask.sum().item()
-
-            logger.info(f"MAE: {mae_total / target_mask_sum}")
-            logger.info(f"RMSE: {np.sqrt(mse_total / target_mask_sum)}")
-
-            # [B * L, D]
-            all_gt_mask = torch.cat(all_gt_mask, dim=0).cpu().reshape(-1, D)
-            # [B * L, D]
-            all_observed_data = torch.cat(all_observed_data, dim=0).cpu().reshape(-1, D)
-            # [B * L, n_samples, D]
-            all_generated_samples = torch.cat(all_generated_samples, dim=0).cpu()
-            # [B * L, D]
-            all_generated_samples_median = torch.cat(all_generated_samples_median, dim=0).cpu()
-            dataset.save_result(observed_data=all_observed_data,
-                                observed_mask=all_observed_mask,
-                                gt_mask=all_gt_mask,
-                                samples_data=all_generated_samples,
-                                impute_data=all_generated_samples_median)
+            self._impute_statistical_model()
+        elif self.args.model in GENERATIVE_MODEL_LIST:
+            self._impute_generative_model()
+        elif self.args.model in DISCRIMINATIVE_MODEL_LIST:
+            self._impute_discriminative_model()
+        else:
+            raise KeyError(f"model should in {STATISTICAL_MODEL_LIST + GENERATIVE_MODEL_LIST + DISCRIMINATIVE_MODEL_LIST}")
