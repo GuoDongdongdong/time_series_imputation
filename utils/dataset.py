@@ -8,7 +8,7 @@ import scipy.stats as st
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset, DataLoader
 
-from utils.tools import add_missing, get_deltas
+from utils.tools import add_missing, get_deltas, locf
 
 
 class CustomDataset(Dataset):
@@ -40,7 +40,6 @@ class CustomDataset(Dataset):
         train_data = data[data_border_l[0]:data_border_r[0]]
         self.scaler.fit(train_data)
         data       = self.scaler.transform(data)
-
         self.observed_data = data[data_border_l[self.flag]:data_border_r[self.flag]]
         self.observed_mask = 1 - np.isnan(self.observed_data)
         # artifical mask
@@ -49,13 +48,21 @@ class CustomDataset(Dataset):
         self.time_gap = get_deltas(self.ground_truth_mask)
         self.observed_data = np.nan_to_num(self.observed_data)
 
+        if self.args.model == 'GRUD':
+            unnormalized_data = self.scaler.inverse_transform(self.observed_data)
+            L, D = unnormalized_data.shape
+            self.X_LOCF = locf(unnormalized_data.reshape(-1, L, D))
+            self.X_LOCF = self.X_LOCF.reshape(L, D)
+            self.empirical_mean = np.sum(unnormalized_data * self.observed_mask, axis=0) / np.sum(self.observed_mask, axis=0)
+            self.empirical_mean = np.nan_to_num(self.empirical_mean, 0)
+
         if flag == 'test':
             self.test_date  = raw_data['date'][train_len + vali_len:]
 
     def __getitem__(self, index):
         l, r = index, index + self.args.seq_len
         x = dict()
-        if self.args.model == 'BRITS':
+        if self.args.model == 'BRITS' or self.args.model == 'MRNN':
             x = {
                 'forward':{
                     'X'            : self.observed_data[l : r],
@@ -79,6 +86,14 @@ class CustomDataset(Dataset):
             x = {
                 'timepoints'    : np.arange(self.args.seq_len),
                 'index'         : index
+            }
+        elif self.args.model == 'GRUD':
+            x = {
+                'X' : self.observed_data[l : r],
+                'missing_mask' : self.ground_truth_mask[l : r],
+                'deltas' : self.time_gap[l : r],
+                'empirical_mean' : self.empirical_mean,
+                'X_filledLOCF' : self.X_LOCF[l : r]
             }
         x['observed_data'] = self.observed_data[l : r]
         x['observed_mask'] = self.observed_mask[l : r]

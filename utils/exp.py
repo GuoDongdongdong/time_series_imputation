@@ -7,18 +7,25 @@ import torch.nn as nn
 
 from utils.dataset import data_provider
 from utils.tools import logger, EarlyStopping, DISCRIMINATIVE_MODEL_LIST, GENERATIVE_MODEL_LIST, STATISTICAL_MODEL_LIST
-from models import CSDI, BRITS, LOCF, SAITS, Transformer, USGAN
-
+from models import Mean, Median, Interpolate
+from models import SAITS, Transformer
+from models import BRITS, GRUD, MRNN
+from models import CSDI
+from models import USGAN
 
 class Experiment:
     def __init__(self, args):
         self.model_dict = {
-            'SAITS'       : SAITS,
-            'BRITS'       : BRITS,
-            'Transformer' : Transformer,
-            'USGAN'       : USGAN,
-            'LOCF'        : LOCF,
-            'CSDI'        : CSDI
+            'Interpolate'       : Interpolate,
+            'Mean'              : Mean,
+            'Median'            : Median,
+            'SAITS'             : SAITS,
+            'Transformer'       : Transformer,
+            'BRITS'             : BRITS,
+            'GRUD'              : GRUD,
+            'MRNN'              : MRNN,
+            'CSDI'              : CSDI,
+            'USGAN'             : USGAN,
         }
         self.args = args
         self.args.device = self._get_device()

@@ -31,7 +31,7 @@ class Model(nn.Module):
         super().__init__()
         self.n_steps = args.seq_len
         self.n_features = args.features
-        self.rnn_hidden_size = args.rnn_hidden_size
+        self.rnn_hidden_size = args.BRITS_rnn_hidden_size
 
         self.model = BackboneBRITS(self.n_steps, self.n_features, self.rnn_hidden_size)
     

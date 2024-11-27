@@ -28,12 +28,15 @@ class Model(nn.Module):
             self.hint_rate,
             self.dropout_rate,
         )
-
-    def forward(
-        self,
-        inputs: dict,
-        training_object: str = "generator",
-        training: bool = True,
+    def evaluate(self, batch:dict, training:bool=True) -> torch.Tensor:
+        res = self.forward(batch, )
+        return res['loss']
+    
+    def impute(self, batch, n_samples:int=None) -> torch.Tensor:
+        res = self.forward(batch, false)
+        return res['imputed_data']
+    
+    def forward(self, inputs:dict, training_object:str="generator", training:bool=True,
     ) -> dict:
         assert training_object in [
             "generator",
