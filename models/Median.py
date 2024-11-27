@@ -1,9 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
-
-
-from pypots.imputation import LOCF
+from pypots.imputation import Median
 
 
 from utils.tools import logger
@@ -14,11 +12,8 @@ class Model:
         self.n_steps               = args.seq_len
         self.n_features            = args.features
         self.targets               = args.target
-        self.first_step_imputation = args.LOCF_first_step_imputation
         self.checkpoints_path      = args.checkpoints_path
-        self.model = LOCF(
-            first_step_imputation=self.first_step_imputation
-        )
+        self.model = Median()
 
     def impute(self, test_dataset):
         test_data               = test_dataset.observed_data
@@ -27,7 +22,7 @@ class Model:
         gt_mask                 = test_dataset.ground_truth_mask
         test_data               = test_dataset.inverse(test_data)
         observed_data           = test_dataset.inverse(observed_data)
-        test_data[gt_mask == 0] = np.nan
+        test_data[gt_mask == 0] = np.nan 
         # pypots requires input's shape should be like [B, L, D]
         test_data               = test_data.reshape(1, -1, self.n_features)
         input                   = {"X" : test_data}
