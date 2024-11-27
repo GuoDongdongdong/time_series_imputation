@@ -19,7 +19,7 @@ def parse_args():
     parser.add_argument('-log_dir', type=str, default='log', help='')
 
     parser.add_argument('-train', type=bool, default=True, help='')
-    parser.add_argument('-model', type=str, default='BRITS', help='')
+    parser.add_argument('-model', type=str, default='GRUD', help='')
     parser.add_argument('-target', type=list[str], default=['humidity_missing'], help='')
     parser.add_argument('-seq_len', type=int, default=48, help='')
     parser.add_argument('-n_samples', type=int, default=100, help='Generative model only')
@@ -37,8 +37,8 @@ def parse_args():
     parser.add_argument('-batch_size', type=int, default=32, help='')
     parser.add_argument('-lr', type=float, default=1e-3, help='')
     parser.add_argument('-epochs', type=int, default=200, help='')
-    parser.add_argument('-patience', type=int, default=10, help='')
-    parser.add_argument('-num_workers', type=int, default=0, help='')
+    parser.add_argument('-patience', type=int, default=5, help='')
+    parser.add_argument('-num_workers', type=int, default=8, help='')
 
     # SAITS
     parser.add_argument('-diagonal_attention_mask', type=bool, default=True, help='')
@@ -65,11 +65,17 @@ def parse_args():
     parser.add_argument('-USGAN_dropout', type=float, default=0.0, help='')
 
     # BRITS
-    parser.add_argument('-rnn_hidden_size', type=int, default=512, help='')
+    parser.add_argument('-BRITS_rnn_hidden_size', type=int, default=512, help='')
+    # GRUD
+    parser.add_argument('-GRUD_rnn_hidden_size', type=int, default=512, help='')
+    # MRNN
+    parser.add_argument('-MRNN_rnn_hidden_size', type=int, default=512, help='')
 
     # LOCF
     parser.add_argument('-LOCF_first_step_imputation', type=str, default='backward', help='')
-
+    # Interpolate
+    parser.add_argument('-Interpolate_kind', type=str, default='linear', help='should be one of : linear, nearest, nearest-up, zero, slinear, quadratic, cubic, previous, next')
+    
     # CSDI
     parser.add_argument('-CSDI_timeemb', type=int, default=128, help='')
     parser.add_argument('-CSDI_featureemb', type=int, default=16, help='')
@@ -84,6 +90,15 @@ def parse_args():
     parser.add_argument('-CSDI_schedule', type=str, default='quad', help='[quad, linear]')
     parser.add_argument('-CSDI_beta_start', type=float, default=0.0001, help='')
     parser.add_argument('-CSDI_beta_end', type=float, default=0.5, help='')
+    
+    # TimeNets
+    parser.add_argument('-TimesNet_n_layers', type=int, default=1, help='')
+    parser.add_argument('-TimesNet_top_k', type=int, default=3, help='')
+    parser.add_argument('-TimesNet_d_model', type=int, default=128, help='')
+    parser.add_argument('-TimesNet_d_ffn', type=int, default=256, help='')
+    parser.add_argument('-TimesNet_n_kernels', type=int, default=3, help='')
+    parser.add_argument('-TimesNet_dropout', type=float, default=0, help='')
+    parser.add_argument('-TimesNet_apply_nonstationary_norm', type=bool, default=False, help='')
 
     args = parser.parse_args()
     args.features = len(args.target)
@@ -91,6 +106,10 @@ def parse_args():
     time_now = datetime.datetime.now().__format__("%Y%m%d_T%H%M%S")
     args.log_path = os.path.join(args.log_dir, args.model, time_now)
     args.checkpoints_path = os.path.join(args.checkpoints_dir, args.model, time_now)
+    if args.model == 'Interpolate':
+        args.log_path = os.path.join(args.log_dir, f'{args.model}_{args.Interpolate_kind}', time_now)
+        args.checkpoints_path = os.path.join(args.checkpoints_dir, f'{args.model}_{args.Interpolate_kind}', time_now)
+
     os.makedirs(args.log_path, exist_ok=True)
     os.makedirs(args.checkpoints_path, exist_ok=True)
     # save all configuration.
@@ -112,8 +131,9 @@ def main() :
             exp.impute()
         else:
             exp.train()
+            exp.impute()
     else:
-        args.checkpoints_path = 'checkpoints/CSDI/20241104_T101036/checkpoint.pth'
+        args.checkpoints_path = 'checkpoints/GRUD/20241121_T183542/checkpoint.pth'
         exp.load_model(args.checkpoints_path)
         exp.impute()
 

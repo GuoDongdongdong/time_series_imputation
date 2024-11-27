@@ -62,7 +62,8 @@ class CustomDataset(Dataset):
     def __getitem__(self, index):
         l, r = index, index + self.args.seq_len
         x = dict()
-        if self.args.model == 'BRITS' or self.args.model == 'MRNN':
+        model = self.args.model
+        if model == 'BRITS' or model == 'MRNN':
             x = {
                 'forward':{
                     'X'            : self.observed_data[l : r],
@@ -75,19 +76,19 @@ class CustomDataset(Dataset):
                     'deltas'       : self.time_gap[l : r]
                 }
             }
-        elif self.args.model == 'SAITS':
+        elif model == 'SAITS' or model == 'TimesNet':
             x = {
                 'X' : self.observed_data[l : r],
                 'missing_mask' : self.ground_truth_mask[l : r],
                 'X_ori' : self.observed_data[l : r],
                 'indicating_mask' : self.observed_mask[l : r] - self.ground_truth_mask[l : r] 
             }
-        elif self.args.model == 'CSDI':
+        elif model == 'CSDI':
             x = {
                 'timepoints'    : np.arange(self.args.seq_len),
                 'index'         : index
             }
-        elif self.args.model == 'GRUD':
+        elif model == 'GRUD':
             x = {
                 'X' : self.observed_data[l : r],
                 'missing_mask' : self.ground_truth_mask[l : r],
@@ -126,9 +127,8 @@ class CustomDataset(Dataset):
         observed_data[observed_mask == 0 or gt_mask == 0] = np.nan
         df[self.args.target] = observed_data
         df[[target + '_imputation' for target in self.args.target]] = impute_data
-        path = os.path.dirname(self.args.checkpoints_path)
-        df.to_csv(os.path.join(path, 'result.csv'), index=False, float_format='%.2f')
-        np.save(os.path.join(path, 'samples_data.npy'), samples_data)
+        df.to_csv(os.path.join(self.args.checkpoints_path, 'result.csv'), index=False, float_format='%.2f')
+        np.save(os.path.join(self.args.checkpoints_path, 'samples_data.npy'), samples_data)
         return 
         # [n_samples, B*L, D]
         n_samples, L, D = samples_data.shape

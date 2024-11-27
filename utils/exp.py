@@ -10,6 +10,7 @@ from utils.tools import logger, EarlyStopping, DISCRIMINATIVE_MODEL_LIST, GENERA
 from models import Mean, Median, Interpolate
 from models import SAITS, Transformer
 from models import BRITS, GRUD, MRNN
+from models import TimesNet
 from models import CSDI
 from models import USGAN
 
@@ -24,6 +25,7 @@ class Experiment:
             'BRITS'             : BRITS,
             'GRUD'              : GRUD,
             'MRNN'              : MRNN,
+            'TimesNet'          : TimesNet,
             'CSDI'              : CSDI,
             'USGAN'             : USGAN,
         }
@@ -187,8 +189,7 @@ class Experiment:
             all_observed_data[all_gt_mask == 0] = np.nan
             df[self.args.target] = all_observed_data
             df[[target + '_imputation' for target in self.args.target]] = all_generate_data
-            path = os.path.dirname(self.args.checkpoints_path)
-            df.to_csv(os.path.join(path, 'result.csv'), index=False, float_format='%.2f', na_rep='NaN')
+            df.to_csv(os.path.join(self.args.checkpoints_path, 'result.csv'), index=False, float_format='%.2f', na_rep='NaN')
     
     def _impute_statistical_model(self):
         dataset, dataloader = self._get_data('test')

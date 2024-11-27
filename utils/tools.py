@@ -13,7 +13,7 @@ from pypots.utils.logging import logger_creator, logger
 
 STATISTICAL_MODEL_LIST    = ['Mean', 'Median', 'Interpolate']
 GENERATIVE_MODEL_LIST     = ['CSDI']
-DISCRIMINATIVE_MODEL_LIST = ['SAITS', 'Transformer', 'GRUD', 'BRITS', 'MRNN']
+DISCRIMINATIVE_MODEL_LIST = ['SAITS', 'GRUD', 'BRITS', 'MRNN', 'TimesNet']
 
 
 class EarlyStopping:
