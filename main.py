@@ -18,8 +18,8 @@ def parse_args():
     parser.add_argument('-checkpoints_dir', type=str, default='checkpoints', help='')
     parser.add_argument('-log_dir', type=str, default='log', help='')
 
-    parser.add_argument('-train', type=bool, default=True, help='')
-    parser.add_argument('-model', type=str, default='GRUD', help='')
+    parser.add_argument('-train', type=bool, default=False, help='')
+    parser.add_argument('-model', type=str, default='USGAN', help='')
     parser.add_argument('-target', type=list[str], default=['humidity_missing'], help='')
     parser.add_argument('-seq_len', type=int, default=48, help='')
     parser.add_argument('-n_samples', type=int, default=100, help='Generative model only')
@@ -39,6 +39,8 @@ def parse_args():
     parser.add_argument('-epochs', type=int, default=200, help='')
     parser.add_argument('-patience', type=int, default=5, help='')
     parser.add_argument('-num_workers', type=int, default=8, help='')
+    parser.add_argument('-G_steps', type=int, default=1, help='')
+    parser.add_argument('-D_steps', type=int, default=1, help='')
 
     # SAITS
     parser.add_argument('-diagonal_attention_mask', type=bool, default=True, help='')
@@ -56,12 +58,21 @@ def parse_args():
     parser.add_argument('-ORT_weight', type=float, default=1, help='')
     parser.add_argument('-MIT_weight', type=float, default=1, help='')
 
+    # ImputeFormer
+    parser.add_argument('-ImputeFormer_d_input_embed', type=int, default=128, help='')
+    parser.add_argument('-ImputeFormer_d_learnalbe_embed', type=int, default=128, help='')
+    parser.add_argument('-ImputeFormer_n_temporal_heads', type=int, default=8, help='')
+    parser.add_argument('-ImputeFormer_n_layers', type=int, default=2, help='')
+    parser.add_argument('-ImputeFormer_d_proj', type=int, default=128, help='')
+    parser.add_argument('-ImputeFormer_d_ffn', type=int, default=256, help='')
+    parser.add_argument('-ImputeFormer_dropout', type=float, default=0.0, help='')
+    parser.add_argument('-ImputeFormer_ORT_weight', type=float, default=1, help='')
+    parser.add_argument('-ImputeFormer_MIT_weight', type=float, default=1, help='')
+
     # USGAN
     parser.add_argument('-USGAN_lambda_mse', type=int, default=1, help='')
     parser.add_argument('-USGAN_hint_rate', type=float, default=0.7, help='')
-    parser.add_argument('-USGAN_G_steps', type=int, default=1, help=''),
-    parser.add_argument('-USGAN_D_steps', type=int, default=1, help='')
-    parser.add_argument('-USGAN_rnn_hidden_size', type=int, default=512, help='')
+    parser.add_argument('-USGAN_rnn_hidden_size', type=int, default=258, help='')
     parser.add_argument('-USGAN_dropout', type=float, default=0.0, help='')
 
     # BRITS
@@ -75,7 +86,7 @@ def parse_args():
     parser.add_argument('-LOCF_first_step_imputation', type=str, default='backward', help='')
     # Interpolate
     parser.add_argument('-Interpolate_kind', type=str, default='linear', help='should be one of : linear, nearest, nearest-up, zero, slinear, quadratic, cubic, previous, next')
-    
+
     # CSDI
     parser.add_argument('-CSDI_timeemb', type=int, default=128, help='')
     parser.add_argument('-CSDI_featureemb', type=int, default=16, help='')
@@ -90,7 +101,7 @@ def parse_args():
     parser.add_argument('-CSDI_schedule', type=str, default='quad', help='[quad, linear]')
     parser.add_argument('-CSDI_beta_start', type=float, default=0.0001, help='')
     parser.add_argument('-CSDI_beta_end', type=float, default=0.5, help='')
-    
+
     # TimeNets
     parser.add_argument('-TimesNet_n_layers', type=int, default=1, help='')
     parser.add_argument('-TimesNet_top_k', type=int, default=3, help='')
@@ -133,7 +144,7 @@ def main() :
             exp.train()
             exp.impute()
     else:
-        args.checkpoints_path = 'checkpoints/GRUD/20241121_T183542/checkpoint.pth'
+        args.checkpoints_path = 'checkpoints/USGAN/20241204_T194125'
         exp.load_model(args.checkpoints_path)
         exp.impute()
 

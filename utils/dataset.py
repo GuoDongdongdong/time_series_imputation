@@ -63,7 +63,7 @@ class CustomDataset(Dataset):
         l, r = index, index + self.args.seq_len
         x = dict()
         model = self.args.model
-        if model == 'BRITS' or model == 'MRNN':
+        if model == 'BRITS' or model == 'MRNN' or model == 'USGAN':
             x = {
                 'forward':{
                     'X'            : self.observed_data[l : r],

@@ -13,7 +13,7 @@ class Model(nn.Module):
 
     def __init__(self, args):
         super().__init__()
-        self.n_step = args.seq_len
+        self.n_steps = args.seq_len
         self.n_features = args.features
         self.rnn_hidden_size = args.USGAN_rnn_hidden_size
         self.lambda_mse = args.USGAN_lambda_mse
@@ -28,12 +28,19 @@ class Model(nn.Module):
             self.hint_rate,
             self.dropout_rate,
         )
-    def evaluate(self, batch:dict, training:bool=True) -> torch.Tensor:
-        res = self.forward(batch, )
+
+    def get_generator(self):
+        return self.backbone.generator
+    
+    def get_discriminator(self):
+        return self.backbone.discriminator
+    
+    def evaluate(self, batch:dict, training:bool=True, object:str="generator") -> torch.Tensor:
+        res = self.forward(batch, object, training)
         return res['loss']
     
     def impute(self, batch, n_samples:int=None) -> torch.Tensor:
-        res = self.forward(batch, false)
+        res = self.forward(batch, "generator", False)
         return res['imputed_data']
     
     def forward(self, inputs:dict, training_object:str="generator", training:bool=True,
@@ -44,26 +51,19 @@ class Model(nn.Module):
         ], 'training_object should be "generator" or "discriminator"'
 
         results = {}
-        if training:
-            if training_object == "discriminator":
-                imputed_data, discrimination_loss = self.backbone(
-                    inputs, training_object, training
-                )
-                loss = discrimination_loss
-            else:
-                imputed_data, generation_loss = self.backbone(
-                    inputs,
-                    training_object,
-                    training,
-                )
-                loss = generation_loss
-            results["loss"] = loss
+        if training_object == "discriminator":
+            imputed_data, discrimination_loss = self.backbone(
+                inputs, training_object, training
+            )
+            loss = discrimination_loss
         else:
-            imputed_data = self.backbone(
+            imputed_data, generation_loss = self.backbone(
                 inputs,
                 training_object,
                 training,
             )
+            loss = generation_loss
+        results["loss"] = loss
 
         results["imputed_data"] = imputed_data
         return results
@@ -182,32 +182,29 @@ class BackboneUSGAN(nn.Module):
         ) = self.generator(inputs)
 
         # if in training mode, return results with losses
-        if training:
-            forward_X = inputs["forward"]["X"]
-            forward_missing_mask = inputs["forward"]["missing_mask"]
+        forward_X = inputs["forward"]["X"]
+        forward_missing_mask = inputs["forward"]["missing_mask"]
 
-            if training_object == "discriminator":
-                discrimination = self.discriminator(
-                    imputed_data.detach(), forward_missing_mask
-                )
-                l_D = F.binary_cross_entropy_with_logits(
-                    discrimination, forward_missing_mask
-                )
-                discrimination_loss = l_D
-                return imputed_data, discrimination_loss
-            else:
-                discrimination = self.discriminator(imputed_data, forward_missing_mask)
-                l_G = -F.binary_cross_entropy_with_logits(
-                    discrimination,
-                    forward_missing_mask,
-                    weight=1 - forward_missing_mask,
-                )
-                reconstruction = (f_reconstruction + b_reconstruction) / 2
-                reconstruction_loss = calc_mse(
-                    forward_X, reconstruction, forward_missing_mask
-                ) + 0.1 * calc_mse(f_reconstruction, b_reconstruction)
-                loss_gene = l_G + self.lambda_mse * reconstruction_loss
-                generation_loss = loss_gene
-                return imputed_data, generation_loss
+        if training_object == "discriminator":
+            discrimination = self.discriminator(
+                imputed_data.detach(), forward_missing_mask
+            )
+            l_D = F.binary_cross_entropy_with_logits(
+                discrimination, forward_missing_mask
+            )
+            discrimination_loss = l_D
+            return imputed_data, discrimination_loss
         else:
-            return imputed_data
+            discrimination = self.discriminator(imputed_data, forward_missing_mask)
+            l_G = -F.binary_cross_entropy_with_logits(
+                discrimination,
+                forward_missing_mask,
+                weight=1 - forward_missing_mask,
+            )
+            reconstruction = (f_reconstruction + b_reconstruction) / 2
+            reconstruction_loss = calc_mse(
+                forward_X, reconstruction, forward_missing_mask
+            ) + 0.1 * calc_mse(f_reconstruction, b_reconstruction)
+            loss_gene = l_G + self.lambda_mse * reconstruction_loss
+            generation_loss = loss_gene
+            return imputed_data, generation_loss

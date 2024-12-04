@@ -58,6 +58,11 @@ class Experiment:
     def _get_optimizer(self):
         return torch.optim.Adam(self.model.parameters(), lr=self.args.lr)
 
+    def _get_GAN_optimizer(self):
+        G_optimizer = torch.optim.Adam(self.model.get_generator().parameters())
+        D_optimizer = torch.optim.Adam(self.model.get_discriminator().parameters())
+        return G_optimizer, D_optimizer
+
     def _get_data(self, flag):
         return data_provider(self.args, flag)
 
@@ -196,14 +201,64 @@ class Experiment:
         self.model.impute(dataset)
 
     def load_model(self, path):
-        self.model.load_state_dict(torch.load(path))
+        self.model.load_state_dict(torch.load(os.path.join(path, 'checkpoint.pth')))
 
     def params(self):
         if isinstance(self.model, nn.Module):
             return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         return 0
 
+    def train_GAN(self) :
+        dataset, dataloader = self._get_data('train')
+        early_stop = EarlyStopping(patience=self.args.patience)
+        G_optimizer, D_optimizer = self._get_GAN_optimizer()
+        if self.args.use_amp :
+            scaler = torch.cuda.amp.grad_scaler.GradScaler()
+
+        for epoch in range(self.args.epochs):
+            self.model.train()
+            G_train_loss = []
+            D_train_loss = []
+            for idx, batch in enumerate(dataloader):
+                batch = self._move_cuda(batch)
+                if idx % self.args.G_steps == 0:
+                    G_optimizer.zero_grad()
+                    loss = self.model.evaluate(batch, True, "generator")
+                    if self.args.use_amp:
+                        scaler.scale(loss).backward()
+                        scaler.step(G_optimizer)
+                        scaler.update()
+                    else:
+                        loss.backward()
+                        G_optimizer.step()
+                    G_train_loss.append(loss.item())
+                if idx % self.args.D_steps == 0:
+                    D_optimizer.zero_grad()
+                    loss = self.model.evaluate(batch, True, "discriminator")
+                    if self.args.use_amp:
+                        scaler.scale(loss).backward()
+                        scaler.step(D_optimizer)
+                        scaler.update()
+                    else:
+                        loss.backward()
+                        D_optimizer.step()
+                    D_train_loss.append(loss.item())
+                    
+            G_train_loss = np.average(G_train_loss)
+            D_train_loss = np.average(D_train_loss)
+            validation_loss = self.validate()
+            logger.info("Epoch: {0} G_Train Loss: {1:.7f} D_Train Loss: {2:.7f} Vali Loss: {3:.7f}".format(epoch + 1, G_train_loss, D_train_loss, validation_loss))
+
+            early_stop(validation_loss, self.model, self.args.checkpoints_path)
+            if early_stop.stop:
+                logger.info("Early stopping")
+                break
+
     def train(self):
+        if self.args.model == 'USGAN':
+            self.train_GAN()
+            return 
+        
         dataset, dataloader = self._get_data('train')
         early_stop = EarlyStopping(patience=self.args.patience)
         optimizer = self._get_optimizer()
