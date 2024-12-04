@@ -76,7 +76,7 @@ class CustomDataset(Dataset):
                     'deltas'       : self.time_gap[l : r]
                 }
             }
-        elif model == 'SAITS' or model == 'TimesNet':
+        elif model == 'SAITS' or model == 'TimesNet' or model == 'ImputeFormer':
             x = {
                 'X' : self.observed_data[l : r],
                 'missing_mask' : self.ground_truth_mask[l : r],

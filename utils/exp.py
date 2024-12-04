@@ -8,7 +8,7 @@ import torch.nn as nn
 from utils.dataset import data_provider
 from utils.tools import logger, EarlyStopping, DISCRIMINATIVE_MODEL_LIST, GENERATIVE_MODEL_LIST, STATISTICAL_MODEL_LIST
 from models import Mean, Median, Interpolate
-from models import SAITS, Transformer
+from models import SAITS, ImputeFormer
 from models import BRITS, GRUD, MRNN
 from models import TimesNet
 from models import CSDI
@@ -21,7 +21,7 @@ class Experiment:
             'Mean'              : Mean,
             'Median'            : Median,
             'SAITS'             : SAITS,
-            'Transformer'       : Transformer,
+            'ImputeFormer'      : ImputeFormer,
             'BRITS'             : BRITS,
             'GRUD'              : GRUD,
             'MRNN'              : MRNN,
