@@ -18,8 +18,8 @@ def parse_args():
     parser.add_argument('-checkpoints_dir', type=str, default='checkpoints', help='')
     parser.add_argument('-log_dir', type=str, default='log', help='')
 
-    parser.add_argument('-train', type=bool, default=False, help='')
-    parser.add_argument('-model', type=str, default='USGAN', help='')
+    parser.add_argument('-train', type=bool, default=True, help='')
+    parser.add_argument('-model', type=str, default='SAITS', help='')
     parser.add_argument('-target', type=list[str], default=['humidity_missing'], help='')
     parser.add_argument('-seq_len', type=int, default=48, help='')
     parser.add_argument('-n_samples', type=int, default=100, help='Generative model only')
@@ -43,20 +43,20 @@ def parse_args():
     parser.add_argument('-D_steps', type=int, default=1, help='')
 
     # SAITS
-    parser.add_argument('-diagonal_attention_mask', type=bool, default=True, help='')
+    parser.add_argument('-SAITS_diagonal_attention_mask', type=bool, default=True, help='')
 
     # SAITS Transformer
-    parser.add_argument('-n_layers', type=int, default=2, help='')
-    parser.add_argument('-d_model', type=int, default=256, help='')
-    parser.add_argument('-d_inner', type=int, default=128, help='')
-    parser.add_argument('-n_heads', type=int, default=4, help='')
-    parser.add_argument('-d_k', type=int, default=64, help='')
-    parser.add_argument('-d_v', type=int, default=64, help='')
-    parser.add_argument('-d_ffn', type=int, default=128, help='')
-    parser.add_argument('-dropout', type=float, default=0.1, help='')
-    parser.add_argument('-attn_dropout', type=float, default=0.1, help='')
-    parser.add_argument('-ORT_weight', type=float, default=1, help='')
-    parser.add_argument('-MIT_weight', type=float, default=1, help='')
+    parser.add_argument('-SAITS_n_layers', type=int, default=2, help='')
+    parser.add_argument('-SAITS_d_model', type=int, default=256, help='')
+    parser.add_argument('-SAITS_d_inner', type=int, default=128, help='')
+    parser.add_argument('-SAITS_n_heads', type=int, default=4, help='')
+    parser.add_argument('-SAITS_d_k', type=int, default=64, help='')
+    parser.add_argument('-SAITS_d_v', type=int, default=64, help='')
+    parser.add_argument('-SAITS_d_ffn', type=int, default=128, help='')
+    parser.add_argument('-SAITS_dropout', type=float, default=0.1, help='')
+    parser.add_argument('-SAITS_attn_dropout', type=float, default=0.1, help='')
+    parser.add_argument('-SAITS_ORT_weight', type=float, default=1, help='')
+    parser.add_argument('-SAITS_MIT_weight', type=float, default=1, help='')
 
     # ImputeFormer
     parser.add_argument('-ImputeFormer_d_input_embed', type=int, default=128, help='')

@@ -11,21 +11,21 @@ from utils.tools import calc_mae
 class Model(nn.Module):
     def __init__(self, args):
         super().__init__()
-        self.n_layers = args.n_layers
         self.n_steps = args.seq_len
         self.n_features = args.features
-        self.diagonal_attention_mask = args.diagonal_attention_mask
-        self.ORT_weight = args.ORT_weight
-        self.MIT_weight = args.MIT_weight
+        self.n_layers = args.SAITS_n_layers
+        self.diagonal_attention_mask = args.SAITS_diagonal_attention_mask
+        self.ORT_weight = args.SAITS_ORT_weight
+        self.MIT_weight = args.SAITS_MIT_weight
         self.customized_loss_func = calc_mae
-        self.d_model = args.d_model
-        self.d_inner = args.d_inner
-        self.n_heads = args.n_heads
-        self.d_k = args.d_k
-        self.d_v = args.d_v
-        self.d_ffn = args.d_ffn
-        self.dropout = args.dropout
-        self.attn_dropout = args.dropout
+        self.d_model = args.SAITS_d_model
+        self.d_inner = args.SAITS_d_inner
+        self.n_heads = args.SAITS_n_heads
+        self.d_k = args.SAITS_d_k
+        self.d_v = args.SAITS_d_v
+        self.d_ffn = args.SAITS_d_ffn
+        self.dropout = args.SAITS_dropout
+        self.attn_dropout = args.SAITS_dropout
         
         self.encoder = BackboneSAITS(
             self.n_steps,
