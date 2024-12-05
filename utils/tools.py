@@ -12,7 +12,7 @@ from pypots.utils.logging import logger_creator, logger
 
 
 STATISTICAL_MODEL_LIST    = ['Mean', 'Median', 'Interpolate']
-GENERATIVE_MODEL_LIST     = ['CSDI']
+GENERATIVE_MODEL_LIST     = ['CSDI', 'GPVAE']
 DISCRIMINATIVE_MODEL_LIST = ['SAITS', 'ImputeFormer', 'GRUD', 'BRITS', 'MRNN', 'TimesNet', 'USGAN']
 
 

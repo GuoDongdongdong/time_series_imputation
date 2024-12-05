@@ -11,7 +11,7 @@ from models import Mean, Median, Interpolate
 from models import SAITS, ImputeFormer
 from models import BRITS, GRUD, MRNN
 from models import TimesNet
-from models import CSDI
+from models import CSDI, GPVAE
 from models import USGAN
 
 class Experiment:
@@ -26,8 +26,9 @@ class Experiment:
             'GRUD'              : GRUD,
             'MRNN'              : MRNN,
             'TimesNet'          : TimesNet,
-            'CSDI'              : CSDI,
             'USGAN'             : USGAN,
+            'CSDI'              : CSDI,
+            'GPVAE'             : GPVAE
         }
         self.args = args
         self.args.device = self._get_device()
@@ -104,7 +105,7 @@ class Experiment:
                 all_generated_samples.append(output.permute(1, 0, 2))
 
                 # [B * L, D]
-                samples_median = output.median(dim=0).values.cpu()
+                samples_median = output.median(dim=0).values
                 all_generated_samples_median.append(samples_median)
 
                 # [B * L, D]

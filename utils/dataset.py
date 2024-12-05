@@ -96,6 +96,11 @@ class CustomDataset(Dataset):
                 'empirical_mean' : self.empirical_mean,
                 'X_filledLOCF' : self.X_LOCF[l : r]
             }
+        elif model == 'GPVAE':
+            x = {
+                'X' : self.observed_data[l : r],
+                'missing_mask' : self.ground_truth_mask[l : r]
+            }
         x['observed_data'] = self.observed_data[l : r]
         x['observed_mask'] = self.observed_mask[l : r]
         x['gt_mask']       = self.ground_truth_mask[l : r]
@@ -127,7 +132,7 @@ class CustomDataset(Dataset):
         observed_data[observed_mask == 0 or gt_mask == 0] = np.nan
         df[self.args.target] = observed_data
         df[[target + '_imputation' for target in self.args.target]] = impute_data
-        df.to_csv(os.path.join(self.args.checkpoints_path, 'result.csv'), index=False, float_format='%.2f')
+        df.to_csv(os.path.join(self.args.checkpoints_path, 'result.csv'), index=False, float_format='%.2f', na_rep='NaN')
         np.save(os.path.join(self.args.checkpoints_path, 'samples_data.npy'), samples_data)
         return 
         # [n_samples, B*L, D]

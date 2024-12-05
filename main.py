@@ -18,8 +18,8 @@ def parse_args():
     parser.add_argument('-checkpoints_dir', type=str, default='checkpoints', help='')
     parser.add_argument('-log_dir', type=str, default='log', help='')
 
-    parser.add_argument('-train', type=bool, default=True, help='')
-    parser.add_argument('-model', type=str, default='SAITS', help='')
+    parser.add_argument('-train', type=bool, default=False, help='')
+    parser.add_argument('-model', type=str, default='CSDI', help='')
     parser.add_argument('-target', type=list[str], default=['humidity_missing'], help='')
     parser.add_argument('-seq_len', type=int, default=48, help='')
     parser.add_argument('-n_samples', type=int, default=100, help='Generative model only')
@@ -111,6 +111,19 @@ def parse_args():
     parser.add_argument('-TimesNet_dropout', type=float, default=0, help='')
     parser.add_argument('-TimesNet_apply_nonstationary_norm', type=bool, default=False, help='')
 
+    # GPVAE
+    parser.add_argument('-GPVAE_latent_dim', type=int, default=256, help='')
+    parser.add_argument('-GPVAE_encoder_sizes', type=tuple, default=(128,128), help='')
+    parser.add_argument('-GPVAE_decoder_sizes', type=tuple, default=(128,128), help='')
+    parser.add_argument('-GPVAE_beta', type=float, default=1, help='')
+    parser.add_argument('-GPVAE_M', type=int, default=1, help='')
+    parser.add_argument('-GPVAE_K', type=int, default=1, help='')
+    parser.add_argument('-GPVAE_kernel', type=str, default="cauchy", help='the Gaussian Process kernel should be one of these ["cauchy", "diffusion", "rbf", "matern"]')
+    parser.add_argument('-GPVAE_sigma', type=float, default=1, help='')
+    parser.add_argument('-GPVAE_length_scale', type=float, default=7, help='')
+    parser.add_argument('-GPVAE_kernel_scales', type=float, default=1, help='')
+    parser.add_argument('-GPVAE_window_size', type=int, default=24, help='')
+
     args = parser.parse_args()
     args.features = len(args.target)
     args.gpu = args.gpu and torch.cuda.is_available()
@@ -144,7 +157,7 @@ def main() :
             exp.train()
             exp.impute()
     else:
-        args.checkpoints_path = 'checkpoints/USGAN/20241204_T194125'
+        args.checkpoints_path = 'checkpoints/CSDI/20241205_T123431'
         exp.load_model(args.checkpoints_path)
         exp.impute()
 
